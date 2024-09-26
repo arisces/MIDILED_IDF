@@ -4,19 +4,19 @@
 cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
-  "C:/Users/Joshykinz/esp/v5.3/esp-idf/components/bootloader/subproject"
-  "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader"
-  "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix"
-  "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix/tmp"
-  "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix/src/bootloader-stamp"
-  "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix/src"
-  "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Ariscesium/esp/v5.3.1/esp-idf/components/bootloader/subproject"
+  "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader"
+  "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix"
+  "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix/tmp"
+  "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix/src/bootloader-stamp"
+  "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix/src"
+  "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix/src/bootloader-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
+    file(MAKE_DIRECTORY "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
 endforeach()
 if(cfgdir)
-  file(MAKE_DIRECTORY "C:/Users/Joshykinz/idf/led_strip_simple_encoder/build/bootloader-prefix/src/bootloader-stamp${cfgdir}") # cfgdir has leading slash
+  file(MAKE_DIRECTORY "D:/MIDILED_IDF/MIDILED_IDF/build/bootloader-prefix/src/bootloader-stamp${cfgdir}") # cfgdir has leading slash
 endif()

@@ -1,4 +1,4 @@
-idf_component_register(SRCS "main.cpp" "midi_task.cpp"
+idf_component_register(SRCS "usb_descriptors.c" "main.c" "midi_task.c"
                        INCLUDE_DIRS "."
                        REQUIRES driver esp_timer led_strip nvs_flash tinyusb)
 
