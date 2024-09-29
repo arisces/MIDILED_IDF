@@ -1075,3 +1075,13 @@
 65	173	7492836752690703	D:/MIDILED_IDF/build/bootloader/bootloader.elf	c7e463b1f2104304
 65	173	7492836752690703	D:/MIDILED_IDF/build/bootloader/bootloader.bin	c7e463b1f2104304
 65	173	7492836752690703	D:/MIDILED_IDF/build/bootloader/bootloader.map	c7e463b1f2104304
+60	119	0	esp-idf/esptool_py/CMakeFiles/app_check_size	bded923cc25b0054
+60	119	0	D:/MIDILED_IDF/build/esp-idf/esptool_py/CMakeFiles/app_check_size	bded923cc25b0054
+54	164	7492836752690703	bootloader-prefix/src/bootloader-stamp/bootloader-build	c7e463b1f2104304
+54	164	7492836752690703	bootloader/bootloader.elf	c7e463b1f2104304
+54	164	7492836752690703	bootloader/bootloader.bin	c7e463b1f2104304
+54	164	7492836752690703	bootloader/bootloader.map	c7e463b1f2104304
+54	164	7492836752690703	D:/MIDILED_IDF/build/bootloader-prefix/src/bootloader-stamp/bootloader-build	c7e463b1f2104304
+54	164	7492836752690703	D:/MIDILED_IDF/build/bootloader/bootloader.elf	c7e463b1f2104304
+54	164	7492836752690703	D:/MIDILED_IDF/build/bootloader/bootloader.bin	c7e463b1f2104304
+54	164	7492836752690703	D:/MIDILED_IDF/build/bootloader/bootloader.map	c7e463b1f2104304
