@@ -1,4 +1,4 @@
-# Install script for directory: D:/MIDILED_IDF/MIDILED_IDF/managed_components/espressif__tinyusb
+# Install script for directory: D:/MIDILED_IDF/managed_components/espressif__tinyusb
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

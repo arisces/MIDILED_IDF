@@ -1,4 +1,4 @@
-# Install script for directory: D:/MIDILED_IDF/MIDILED_IDF/main
+# Install script for directory: D:/MIDILED_IDF/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

@@ -7,5 +7,6 @@
   ],
   "files.associations": {
     "stdbool.h": "c"
-  }
+  },
+  "idf.flashType": "UART"
 }

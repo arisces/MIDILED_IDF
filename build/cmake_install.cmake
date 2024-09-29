@@ -1,4 +1,4 @@
-# Install script for directory: D:/MIDILED_IDF/MIDILED_IDF
+# Install script for directory: D:/MIDILED_IDF
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -38,8 +38,9 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("D:/MIDILED_IDF/MIDILED_IDF/build/esp-idf/cmake_install.cmake")
+  # Include the install script for each subdirectory.
+  include("D:/MIDILED_IDF/build/esp-idf/cmake_install.cmake")
+
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -50,5 +51,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "D:/MIDILED_IDF/MIDILED_IDF/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "D:/MIDILED_IDF/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
