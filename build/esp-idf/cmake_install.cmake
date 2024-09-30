@@ -544,6 +544,11 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
+  include("D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
   include("D:/MIDILED_IDF/build/esp-idf/espressif__tinyusb/cmake_install.cmake")
 endif()
 

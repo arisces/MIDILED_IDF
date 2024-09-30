@@ -1,4 +1,4 @@
-idf_component_register(SRCS "main.c"
+idf_component_register(SRCS "main.cpp"
                        INCLUDE_DIRS ".")
 
 # idf_component_get_property(tusb_lib espressif__tinyusb COMPONENT_LIB)

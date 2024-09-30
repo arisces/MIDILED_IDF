@@ -821,6 +821,13 @@ D:/MIDILED_IDF/build/esp-idf/wifi_provisioning/CMakeFiles/list_install_component
 D:/MIDILED_IDF/build/esp-idf/wifi_provisioning/CMakeFiles/install.dir
 D:/MIDILED_IDF/build/esp-idf/wifi_provisioning/CMakeFiles/install/local.dir
 D:/MIDILED_IDF/build/esp-idf/wifi_provisioning/CMakeFiles/install/strip.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/__idf_espressif__esp-idf-cxx.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/edit_cache.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/rebuild_cache.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/list_install_components.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/install.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/install/local.dir
+D:/MIDILED_IDF/build/esp-idf/espressif__esp-idf-cxx/CMakeFiles/install/strip.dir
 D:/MIDILED_IDF/build/esp-idf/espressif__tinyusb/CMakeFiles/__idf_espressif__tinyusb.dir
 D:/MIDILED_IDF/build/esp-idf/espressif__tinyusb/CMakeFiles/edit_cache.dir
 D:/MIDILED_IDF/build/esp-idf/espressif__tinyusb/CMakeFiles/rebuild_cache.dir

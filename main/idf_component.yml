@@ -1,5 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
+  espressif/esp-idf-cxx: "^1.0.2-beta"
   idf: ">=5.0"
   espressif/esp_tinyusb: "^1.4.4"
   espressif/led_strip: "^2.0.0"
