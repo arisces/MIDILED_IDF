@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "MIDILED_IDF",
-    "project_version":    "ca96198-dirty",
+    "project_version":    "3981d49-dirty",
     "project_path":       "D:/MIDILED_IDF",
     "idf_path":           "C:/Users/Ariscesium/esp/v5.3.1/esp-idf",
     "build_dir":          "D:/MIDILED_IDF/build",

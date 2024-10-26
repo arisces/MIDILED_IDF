@@ -9,23 +9,19 @@
 #include "class/midi/midi_device.h"
 #include "esp_mac.h"
 
-// At the top of your file, after the includes
-extern const tusb_desc_device_t device_descriptor;
-extern const uint8_t configuration_descriptor[];
-extern const char *string_descriptor[];
-
 static const char *TAG = "USB_MIDI_LED";
 
-#define LED_PIN GPIO_NUM_48
+#define LED_PIN 12
 #define MIN_BRIGHTNESS 20
 #define MAX_BRIGHTNESS 255
 
-#define NUM_MIDI_NOTES 128
+#define NUM_MIDI_NOTES 88
 #define NUM_COLORS 7
+#define NUM_LEDS 93  // Define the number of LEDs in the strip
+#define KEYBOARD_LENGTH 1220  // Define the length of the keyboard in mm
 
 static led_strip_handle_t led_strip;
 
-// Color steps (RGB values)
 const uint32_t colorSteps[NUM_COLORS] = {
     0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3
 };
@@ -56,7 +52,7 @@ uint32_t interpolateColor(uint32_t color1, uint32_t color2, float ratio) {
 void init_led_strip(void) {
     led_strip_config_t strip_config = {
         .strip_gpio_num = LED_PIN,
-        .max_leds = 1,
+        .max_leds = NUM_LEDS,
         .led_pixel_format = LED_PIXEL_FORMAT_GRB,
         .led_model = LED_MODEL_WS2812,
         .flags = {
@@ -90,42 +86,43 @@ void update_led(uint8_t note, uint8_t velocity) {
     uint32_t color = colors[note];
     uint8_t brightness = (velocity * (MAX_BRIGHTNESS - MIN_BRIGHTNESS) / 127) + MIN_BRIGHTNESS;
     
+    // Calculate the relative position of the note on the keyboard
+    float relativePosition = (note - 21) / 87.0;  // 21 is the lowest note, 87 is the range of notes
+    
+    // Map the relative position to the LED strip
+    int ledIndex = (int)(relativePosition * NUM_LEDS);
+    
     uint8_t r = (((color >> 16) & 0xFF) * brightness / MAX_BRIGHTNESS);
     uint8_t g = (((color >> 8) & 0xFF) * brightness / MAX_BRIGHTNESS);
     uint8_t b = ((color & 0xFF) * brightness / MAX_BRIGHTNESS);
     
-    ESP_LOGD(TAG, "Updating LED: r=%d, g=%d, b=%d", r, g, b);
-    led_strip_set_pixel(led_strip, 0, r, g, b);
+    ESP_LOGD(TAG, "Updating LED %d: r=%d, g=%d, b=%d", ledIndex, r, g, b);
+    led_strip_set_pixel(led_strip, ledIndex, r, g, b);
     led_strip_refresh(led_strip);
     
-    ESP_LOGI(TAG, "Note: %d, Velocity: %d, Color: #%06" PRIx32 ", Brightness: %d", note, velocity, color, brightness);
+    ESP_LOGI(TAG, "Note: %d, Velocity: %d, Color: #%06" PRIx32 ", Brightness: %d, LED: %d", note, velocity, color, brightness, ledIndex);
 }
 
 void midi_task(void *arg) {
-    TickType_t last_wake_time = xTaskGetTickCount();
     while (1) {
-        ESP_LOGD(TAG, "MIDI task loop start");
         if (tud_midi_available()) {
             uint8_t packet[4];
-            if (tud_midi_packet_read(packet)) {
-                uint8_t status = packet[1] & 0xF0;
+            while (tud_midi_packet_read(packet)) {
+                uint8_t cable_num = packet[0] >> 4;
+                uint8_t code_index = packet[0] & 0x0F;
+                uint8_t midi_status = packet[1];
                 uint8_t note = packet[2];
                 uint8_t velocity = packet[3];
-                
-                ESP_LOGI(TAG, "MIDI packet received: status=0x%02x, note=%d, velocity=%d", status, note, velocity);
-                
-                if (status == 0x90 && velocity > 0) {
+
+                if ((midi_status & 0xF0) == 0x90) {  // Note On
                     update_led(note, velocity);
-                } else if (status == 0x80 || (status == 0x90 && velocity == 0)) {
+                } else if ((midi_status & 0xF0) == 0x80) {  // Note Off
                     led_strip_clear(led_strip);
                     led_strip_refresh(led_strip);
-                    ESP_LOGI(TAG, "Note Off: %d", note);
                 }
             }
         }
-        ESP_LOGD(TAG, "MIDI task loop end");
-        // Use vTaskDelayUntil for more precise timing
-        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(1));  // Small delay to prevent tight looping
     }
 }
 
@@ -138,8 +135,8 @@ const tusb_desc_device_t device_descriptor = {
     .bDeviceSubClass = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor = 0x303A,  // This is a test VID. Replace with your own if you have one.
-    .idProduct = 0x4000, // This is a test PID. Replace with your own if you have one.
+    .idVendor = 0x303A,
+    .idProduct = 0x4000,
     .bcdDevice = 0x0100,
     .iManufacturer = 0x01,
     .iProduct = 0x02,
@@ -147,21 +144,42 @@ const tusb_desc_device_t device_descriptor = {
     .bNumConfigurations = 0x01
 };
 
+#define MIDI_INTERFACE 0
+
 // USB Configuration Descriptor
 const uint8_t configuration_descriptor[] = {
     // Configuration number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, (TUD_CONFIG_DESC_LEN + TUD_MIDI_DESC_LEN), 0x00, 100),
+    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUD_CONFIG_DESC_LEN + TUD_MIDI_DESC_LEN, 0x00, 100),
 
     // Interface number, string index, EP Out & EP In address, EP size
-    TUD_MIDI_DESCRIPTOR(0, 0, 0x01, 0x81, 64)
+    TUD_MIDI_DESCRIPTOR(MIDI_INTERFACE, 0, 0x01, 0x81, 64)
 };
 
 // String Descriptors
 const char *string_descriptor[] = {
-    (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-    "TinyUSB",                     // 1: Manufacturer
-    "TinyUSB MIDI",                // 2: Product
-    "123456",                      // 3: Serials
+    (const char[]) { 0x09, 0x04 },
+    "TinyUSB",
+    "TinyUSB MIDI",
+    "123456",
+};
+
+void tud_mount_cb(void) {
+    ESP_LOGI(TAG, "USB device mounted");
+}
+
+void tud_umount_cb(void) {
+    ESP_LOGI(TAG, "USB device unmounted");
+}
+
+const tinyusb_config_t tusb_cfg = {
+    .device_descriptor = &device_descriptor,
+    .string_descriptor = string_descriptor,
+    .string_descriptor_count = sizeof(string_descriptor) / sizeof(string_descriptor[0]),
+    .external_phy = false,
+    .configuration_descriptor = configuration_descriptor,
+    // .configuration_descriptor_len = sizeof(configuration_descriptor),
+    .self_powered = true,
+    .vbus_monitor_io = 0
 };
 
 extern "C" void app_main(void) {
@@ -171,16 +189,10 @@ extern "C" void app_main(void) {
     init_colors();
     
     ESP_LOGI(TAG, "USB initialization");
-    const tinyusb_config_t tusb_cfg = {
-        .device_descriptor = &device_descriptor,
-        .string_descriptor = string_descriptor,
-        .string_descriptor_count = sizeof(string_descriptor) / sizeof(string_descriptor[0]),
-        .external_phy = false,
-        .configuration_descriptor = configuration_descriptor,
-        .self_powered = true,
-        .vbus_monitor_io = 0
-    };
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
     
     xTaskCreate(midi_task, "midi_task", 4096 * 2, NULL, 5, NULL);
+    
+    // Start the FreeRTOS scheduler
+    // vTaskStartScheduler();
 }
