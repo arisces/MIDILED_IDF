@@ -5,9 +5,7 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "led_strip.h"
-#include "tinyusb.h"
-#include "class/midi/midi_device.h"
-#include "esp_mac.h"
+#include "usb/usb_host.h"
 
 static const char *TAG = "USB_MIDI_LED";
 
@@ -21,6 +19,11 @@ static const char *TAG = "USB_MIDI_LED";
 #define KEYBOARD_LENGTH 1220  // Define the length of the keyboard in mm
 
 static led_strip_handle_t led_strip;
+static usb_host_client_handle_t client_hdl;
+static bool device_connected = false;
+static uint8_t dev_addr = 0;
+static usb_device_handle_t dev_hdl; // Declare globally
+
 
 const uint32_t colorSteps[NUM_COLORS] = {
     0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3
@@ -33,7 +36,11 @@ void init_led_strip(void);
 void init_colors(void);
 void update_led(uint8_t note, uint8_t velocity);
 void midi_task(void *arg);
+void usb_lib_task(void *arg);
+void open_dev(uint8_t dev_addr);  // Add this prototype above its usage
 
+
+// Interpolates between two RGB colors
 uint32_t interpolateColor(uint32_t color1, uint32_t color2, float ratio) {
     uint8_t r1 = (color1 >> 16) & 0xFF;
     uint8_t g1 = (color1 >> 8) & 0xFF;
@@ -41,19 +48,19 @@ uint32_t interpolateColor(uint32_t color1, uint32_t color2, float ratio) {
     uint8_t r2 = (color2 >> 16) & 0xFF;
     uint8_t g2 = (color2 >> 8) & 0xFF;
     uint8_t b2 = color2 & 0xFF;
-    
+
     uint8_t r = r1 * (1 - ratio) + r2 * ratio;
     uint8_t g = g1 * (1 - ratio) + g2 * ratio;
     uint8_t b = b1 * (1 - ratio) + b2 * ratio;
-    
+
     return (r << 16) | (g << 8) | b;
 }
 
 void init_led_strip(void) {
     led_strip_config_t strip_config = {
         .strip_gpio_num = LED_PIN,
-        .max_leds = NUM_LEDS,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
+        .max_leds = 1,
+        // .led_pixel_format = LED_PIXEL_FORMAT_GRB,
         .led_model = LED_MODEL_WS2812,
         .flags = {
             .invert_out = false
@@ -85,111 +92,134 @@ void init_colors(void) {
 void update_led(uint8_t note, uint8_t velocity) {
     uint32_t color = colors[note];
     uint8_t brightness = (velocity * (MAX_BRIGHTNESS - MIN_BRIGHTNESS) / 127) + MIN_BRIGHTNESS;
-    
-    // Calculate the relative position of the note on the keyboard
-    float relativePosition = (note - 21) / 87.0;  // 21 is the lowest note, 87 is the range of notes
-    
-    // Map the relative position to the LED strip
-    int ledIndex = (int)(relativePosition * NUM_LEDS);
-    
+
     uint8_t r = (((color >> 16) & 0xFF) * brightness / MAX_BRIGHTNESS);
     uint8_t g = (((color >> 8) & 0xFF) * brightness / MAX_BRIGHTNESS);
     uint8_t b = ((color & 0xFF) * brightness / MAX_BRIGHTNESS);
-    
-    ESP_LOGD(TAG, "Updating LED %d: r=%d, g=%d, b=%d", ledIndex, r, g, b);
-    led_strip_set_pixel(led_strip, ledIndex, r, g, b);
+
+    ESP_LOGD(TAG, "Updating LED: r=%d, g=%d, b=%d", r, g, b);
+    led_strip_set_pixel(led_strip, 0, r, g, b);
     led_strip_refresh(led_strip);
-    
-    ESP_LOGI(TAG, "Note: %d, Velocity: %d, Color: #%06" PRIx32 ", Brightness: %d, LED: %d", note, velocity, color, brightness, ledIndex);
+
+    ESP_LOGI(TAG, "Note: %d, Velocity: %d, Color: #%06" PRIx32 ", Brightness: %d", note, velocity, color, brightness);
 }
 
-void midi_task(void *arg) {
-    while (1) {
-        if (tud_midi_available()) {
-            uint8_t packet[4];
-            while (tud_midi_packet_read(packet)) {
-                uint8_t cable_num = packet[0] >> 4;
-                uint8_t code_index = packet[0] & 0x0F;
-                uint8_t midi_status = packet[1];
-                uint8_t note = packet[2];
-                uint8_t velocity = packet[3];
+static void client_event_cb(const usb_host_client_event_msg_t *event_msg, void *arg)
+{
+    if (event_msg->event == USB_HOST_CLIENT_EVENT_NEW_DEV) {
+        ESP_LOGI(TAG, "New device connected, address %d", event_msg->new_dev.address);
+        device_connected = true;
+        dev_addr = event_msg->new_dev.address;
+        open_dev(dev_addr);  // Call to open_dev here
+    } else if (event_msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) {
+        ESP_LOGI(TAG, "Device disconnected");
+        device_connected = false;
+        dev_addr = 0;
+    }
+}
 
-                if ((midi_status & 0xF0) == 0x90) {  // Note On
+void open_dev(uint8_t dev_addr)
+{
+    esp_err_t err = usb_host_device_open(client_hdl, dev_addr, &dev_hdl);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open device: %s", esp_err_to_name(err));
+        return;
+    }
+
+    // Here you would typically claim the interface and set up endpoints
+}
+
+
+
+void midi_task(void *arg)
+{
+    TickType_t last_wake_time = xTaskGetTickCount();
+    while (1) {
+        if (device_connected) {
+            // Create a transfer
+            usb_transfer_t *transfer = NULL;
+            esp_err_t ret = usb_host_transfer_alloc(128, 0, &transfer);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to allocate transfer");
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+
+            // Set up the transfer
+            transfer->num_bytes = 4; // MIDI packet size
+            transfer->bEndpointAddress = 0x81; // Adjust this based on your MIDI device
+            transfer->device_handle = dev_hdl; // Use the global dev_hdl
+
+            // Submit the transfer
+            ret = usb_host_transfer_submit(transfer);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to submit transfer");
+                usb_host_transfer_free(transfer);
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+
+            // Wait for the transfer to complete
+            ret = usb_host_client_handle_events(client_hdl, portMAX_DELAY);
+            if (ret == ESP_OK) {
+                // Process the MIDI data
+                uint8_t *data = transfer->data_buffer;
+                uint8_t status = data[0] & 0xF0;
+                uint8_t note = data[1];
+                uint8_t velocity = data[2];
+                
+                ESP_LOGI(TAG, "MIDI packet received: status=0x%02x, note=%d, velocity=%d", status, note, velocity);
+                
+                if (status == 0x90 && velocity > 0) {
                     update_led(note, velocity);
                 } else if ((midi_status & 0xF0) == 0x80) {  // Note Off
                     led_strip_clear(led_strip);
                     led_strip_refresh(led_strip);
                 }
             }
+
+            // Free the transfer
+            usb_host_transfer_free(transfer);
         }
-        vTaskDelay(pdMS_TO_TICKS(1));  // Small delay to prevent tight looping
+        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10));
     }
 }
 
-// USB Device Descriptor
-const tusb_desc_device_t device_descriptor = {
-    .bLength = sizeof(tusb_desc_device_t),
-    .bDescriptorType = TUSB_DESC_DEVICE,
-    .bcdUSB = 0x0200,
-    .bDeviceClass = TUSB_CLASS_MISC,
-    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol = MISC_PROTOCOL_IAD,
-    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor = 0x303A,
-    .idProduct = 0x4000,
-    .bcdDevice = 0x0100,
-    .iManufacturer = 0x01,
-    .iProduct = 0x02,
-    .iSerialNumber = 0x03,
-    .bNumConfigurations = 0x01
-};
 
-#define MIDI_INTERFACE 0
-
-// USB Configuration Descriptor
-const uint8_t configuration_descriptor[] = {
-    // Configuration number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUD_CONFIG_DESC_LEN + TUD_MIDI_DESC_LEN, 0x00, 100),
-
-    // Interface number, string index, EP Out & EP In address, EP size
-    TUD_MIDI_DESCRIPTOR(MIDI_INTERFACE, 0, 0x01, 0x81, 64)
-};
-
-// String Descriptors
-const char *string_descriptor[] = {
-    (const char[]) { 0x09, 0x04 },
-    "TinyUSB",
-    "TinyUSB MIDI",
-    "123456",
-};
-
-void tud_mount_cb(void) {
-    ESP_LOGI(TAG, "USB device mounted");
+void usb_host_task(void *arg)
+{
+    while (1) {
+        uint32_t event_flags;
+        usb_host_lib_handle_events(portMAX_DELAY, &event_flags);
+        
+        // Handle any USB host events here if needed
+    }
 }
 
-void tud_umount_cb(void) {
-    ESP_LOGI(TAG, "USB device unmounted");
-}
-
-const tinyusb_config_t tusb_cfg = {
-    .device_descriptor = &device_descriptor,
-    .string_descriptor = string_descriptor,
-    .string_descriptor_count = sizeof(string_descriptor) / sizeof(string_descriptor[0]),
-    .external_phy = false,
-    .configuration_descriptor = configuration_descriptor,
-    // .configuration_descriptor_len = sizeof(configuration_descriptor),
-    .self_powered = true,
-    .vbus_monitor_io = 0
-};
-
-extern "C" void app_main(void) {
+void app_main(void)
+{
     ESP_LOGI(TAG, "USB MIDI LED Example");
     
     init_led_strip();
     init_colors();
     
     ESP_LOGI(TAG, "USB initialization");
-    ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+    
+    usb_host_config_t host_config = {
+        .skip_phy_setup = false,
+        .intr_flags = ESP_INTR_FLAG_LEVEL1,
+    };
+    ESP_ERROR_CHECK(usb_host_install(&host_config));
+    
+    usb_host_client_config_t client_config = {
+        .is_synchronous = false,
+        .max_num_event_msg = 5,
+        .async = {
+            .client_event_callback = client_event_cb,
+            .callback_arg = NULL,
+        }
+    };
+    ESP_ERROR_CHECK(usb_host_client_register(&client_config, &client_hdl));
     
     xTaskCreate(midi_task, "midi_task", 4096 * 2, NULL, 5, NULL);
     
